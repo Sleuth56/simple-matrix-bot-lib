@@ -36,31 +36,30 @@ class Api:
         Login the client to the homeserver
 
         """
-
         self.creds.session_read_file()
 
-        self.async_client = AsyncClient(self.creds.homeserver,
-                                        self.creds.username)
+        if not self.creds.homeserver:
+            raise ValueError("Missing homeserver")
+        if not self.creds.username:
+            raise ValueError("Missing Username")
+        if not (self.creds.password or self.creds.login_token or self.creds.access_token):
+            raise ValueError("Missing password, login token, access token. Either password, login token or access token must be provided")
 
-        if self.creds.device_id:
-            self.async_client.device_id = self.creds.device_id
+        self.async_client = AsyncClient(homeserver=self.creds.homeserver, user=self.creds.username, device_id=self.creds.device_id)
 
-        if self.creds.password or self.creds.login_token:
-            response = await self.async_client.login(
-                password=self.creds.password,
-                device_name='Bot Client built with Simple-Matrix-Bot-Lib',
-                token=self.creds.login_token)
-            print(response)
+        if self.creds.password:
+            resp = await self.async_client.login(password=self.creds.password,  device_name=self.creds.device_name)
+            print(resp)
 
-            self.creds.device_id = response.device_id
-            self.creds.access_token = response.access_token
-
-        else:
+        elif self.creds.access_token:
             self.async_client.access_token = self.creds.access_token
-            self.async_client.user_id = f"@{self.creds.username}:{self.creds.homeserver}"
-            self.async_client.device_id = self.creds.device_id
 
+        elif self.creds.login_token:
+            resp = await self.async_client.login(token=self.creds.login_token,  device_name=self.creds.device_name)
+            print(resp)
+        
         self.creds.session_write_file()
+        
 
     async def send_text_message(self, room_id, message):
         """
